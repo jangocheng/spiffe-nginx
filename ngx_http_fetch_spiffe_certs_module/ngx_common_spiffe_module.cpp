@@ -228,7 +228,7 @@ ngx_ssl_spiffe_reload_trusted_certificates(ngx_ssl_t *ngx_ssl, std::string bundl
 static ngx_int_t
 ngx_ssl_spiffe_add_all_cas(ngx_ssl_t *ngx_ssl, std::string bundle_der, ngx_ssl_thread_config_t *config) {
     ngx_ssl_t *ssl;
-    X509_STORE *store = NULL;
+    X509_STORE *newStore = NULL;
     X509 *x509;
     unsigned char *buf, *p;
     
@@ -239,14 +239,9 @@ ngx_ssl_spiffe_add_all_cas(ngx_ssl_t *ngx_ssl, std::string bundle_der, ngx_ssl_t
     buf = (unsigned char *)bundle_der.c_str();
     p = buf;
    
-    // Get certificate store, to push all CAs.
+    // Create a new store, to push all CAs.
     //
-    store = SSL_CTX_get_cert_store(ssl->ctx);
-    
-    if(!store) {
-        spiffe_log(NGX_LOG_ERR, config->log, "could not get cert store");    
-        return NGX_ERROR;
-    }
+    newStore = X509_STORE_new();
 
     // Consume all certificates into bundle and push inside X509_STORE
     //
@@ -257,7 +252,7 @@ ngx_ssl_spiffe_add_all_cas(ngx_ssl_t *ngx_ssl, std::string bundle_der, ngx_ssl_t
             return NGX_ERROR;
         }
 
-        if(!X509_STORE_add_cert(store, x509)) {
+        if(!X509_STORE_add_cert(newStore, x509)) {
             auto error = ERR_get_error();
             // Check for duplicate root certificate
             if (ERR_GET_REASON(error) != X509_R_CERT_ALREADY_IN_HASH_TABLE) {
@@ -268,6 +263,10 @@ ngx_ssl_spiffe_add_all_cas(ngx_ssl_t *ngx_ssl, std::string bundle_der, ngx_ssl_t
         }
         X509_free(x509);
     }
+
+    // Set ssl context store with all new bundles
+    //
+    SSL_CTX_set_cert_store(ssl->ctx, newStore);
 
     return NGX_OK;
 }
