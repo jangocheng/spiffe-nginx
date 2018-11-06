@@ -14,3 +14,7 @@ Building is best done with the included Dockerfile and Makefile:
 * `make clean` - cleans the nginx build
 * `make shell` - launches a shell in the build container
 
+## Example Configurations
+
+Example nginx configurations can be found in the [spiffe-support](spiffe-support)
+directory of this repository.
